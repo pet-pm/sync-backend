@@ -2,11 +2,7 @@
 name = "discord-sync-backend"
 main = "src/index.ts"
 compatibility_date = "2024-10-11"
-node_compat = true
 
-# Workers Logs
-# Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
-# Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
 [observability]
 enabled = true
 
@@ -20,15 +16,8 @@ binding = "PLUGIN_BUCKET"
 bucket_name = "discord-sync-plugin-bucket"
 preview_bucket_name = "discord-sync-plugin-bucket-preview"
 
-
-
-
-# Automatically place your workloads in an optimal location to minimize latency.
-# If you are running back-end logic in a Worker, running it closer to your back-end infrastructure
-# rather than the end user may result in better performance.
-# Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-# [placement]
-# mode = "smart"
+[placement]
+mode = "smart"
 
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Docs:

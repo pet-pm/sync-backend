@@ -2,6 +2,7 @@
 name = "discord-sync-backend"
 main = "src/index.ts"
 compatibility_date = "2024-10-11"
+workers_dev = false
 
 [observability]
 enabled = true
@@ -24,6 +25,8 @@ routes = [
   { pattern = "https://pet.pm/protected/*", script = "src/index.ts" },
   { pattern = "https://pet.pm/login", script = "src/index.ts" },
 ]
+
+
 
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Docs:

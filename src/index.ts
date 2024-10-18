@@ -11,6 +11,7 @@ type Env = {
   SECRET_KEY: string;
   DISCORD_CLIENT_SECRET: string;
   DISCORD_CLIENT_ID: string;
+  KV: KVNamespace;
 };
 
 type Variables = {
@@ -32,7 +33,7 @@ const debugLog = (message: string) => {
 app.use(
   '*',
   cors({
-    origin: '*', // In production, restrict this to your plugin's origin.
+    origin: '*',
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowHeaders: ['Content-Type', 'Authorization'],
   })
@@ -50,6 +51,9 @@ app.use('/protected/*', async (c, next) => {
 
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(c.env.SECRET_KEY));
+    if (!payload.userId) {
+      throw new Error("Invalid payload: Missing userId.");
+    }
     c.set('userId', payload.userId as string);
     debugLog(`Authenticated user: ${payload.userId}`);
     await next();
@@ -66,7 +70,6 @@ app.get('/auth/sync', (c: Context) => {
   )}&response_type=code&scope=identify`;
 
   debugLog('Redirecting to Discord for OAuth.');
-
   return c.redirect(authorizationUrl);
 });
 
@@ -82,7 +85,6 @@ app.get('/auth/callback', async (c: Context<{ Bindings: Env }>) => {
 
     debugLog('Exchanging code for token.');
 
-    // Exchange the authorization code for an access token
     const tokenResponse = await fetch(`${DISCORD_API_URL}/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -104,7 +106,6 @@ app.get('/auth/callback', async (c: Context<{ Bindings: Env }>) => {
 
     const accessToken = tokenData.access_token;
 
-    // Step 3: Fetch the user's Discord info using the access token
     const userResponse = await fetch(`${DISCORD_API_URL}/users/@me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -130,7 +131,6 @@ app.get('/auth/callback', async (c: Context<{ Bindings: Env }>) => {
       return c.json({ error: 'Internal server error' }, 500);
     }
 
-    // Debug logging
     debugLog(`OAuth flow completed. User ID: ${userId}, Username: ${userData.username}`);
 
     // Return an HTML page with a password form
@@ -165,10 +165,8 @@ app.post('/auth/set-password', async (c: Context<{ Bindings: Env }>) => {
       return c.json({ error: 'Missing userId or password' }, 400);
     }
 
-    // Hash the password with bcrypt
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    // Store the hashed password in the database
     try {
       await c.env.DB.prepare('UPDATE users SET password = ? WHERE id = ?')
         .bind(hashedPassword, userId)
@@ -194,7 +192,7 @@ const authUserOnly = async (c: Context, next: Function) => {
 
   if (authenticatedUserId !== requestedUserId) {
     debugLog(`User ID mismatch: ${authenticatedUserId} tried to access ${requestedUserId}'s resources.`);
-    return c.json({ error: 'Access denied' }, 403); // Deny access if IDs do not match
+    return c.json({ error: 'Access denied' }, 403);
   }
 
   await next();
@@ -204,21 +202,18 @@ const authUserOnly = async (c: Context, next: Function) => {
 app.get('/protected/download-plugin', authUserOnly, async (c) => {
   try {
     const userId = c.get('userId');
-    let fileName = c.req.query('fileName'); // Get fileName from query parameters
+    let fileName = c.req.query('fileName');
 
     if (!fileName) {
       return c.json({ error: 'Missing file name' }, 400);
     }
 
-    // Ensure that fileName only contains the actual file name, not the full path
-    // Strip out any leading path if present (just in case)
     if (fileName.startsWith(`plugins/${userId}/`)) {
       fileName = fileName.replace(`plugins/${userId}/`, '');
     }
 
     const objectKey = `plugins/${userId}/${fileName}`;
 
-    // Fetch the plugin from R2 bucket
     let object;
     try {
       object = await c.env.PLUGIN_BUCKET.get(objectKey);
@@ -231,7 +226,6 @@ app.get('/protected/download-plugin', authUserOnly, async (c) => {
       return c.json({ error: 'Failed to retrieve plugin from R2' }, 500);
     }
 
-    // Return the plugin file
     return c.body(object.body, 200, {
       'Content-Type': 'application/javascript',
       'Content-Disposition': `attachment; filename="${fileName}"`,
@@ -241,7 +235,6 @@ app.get('/protected/download-plugin', authUserOnly, async (c) => {
     return c.json({ error: 'Internal server error', details: error }, 500);
   }
 });
-
 
 // Login route (POST /login)
 app.post('/login', async (c) => {

@@ -60,7 +60,7 @@ app.use('/protected/*', async (c, next) => {
 });
 
 // Step 1: Redirect to Discord for OAuth
-app.get('/auth', (c: Context) => {
+app.get('/auth/sync', (c: Context) => {
   const authorizationUrl = `${DISCORD_API_URL}/oauth2/authorize?client_id=${c.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(
     DISCORD_REDIRECT_URI
   )}&response_type=code&scope=identify`;

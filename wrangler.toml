@@ -19,6 +19,12 @@ preview_bucket_name = "discord-sync-plugin-bucket-preview"
 [placement]
 mode = "smart"
 
+routes = [
+  { pattern = "https://pet.pm/auth/*", script = "src/index.ts" },
+  { pattern = "https://pet.pm/protected/*", script = "src/index.ts" },
+  { pattern = "https://pet.pm/login", script = "src/index.ts" },
+]
+
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Docs:
 # - https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
